@@ -320,27 +320,37 @@
   }
 
   async function listDatabaseFiles() {
-    try {
-      const r = await fetch(DB_DIR + 'manifest.json', { cache: 'no-store' });
-      if (r.ok) {
-        const list = await r.json();
-        if (Array.isArray(list)) {
-          return list
-            .filter((n) => typeof n === 'string' && n.toLowerCase().endsWith('.txt'))
-            .map((n) => DB_DIR + encodeURI(n));
-        }
-      }
-    } catch (e) { /* lanjut ke directory listing */ }
+    const apiUrl =
+      'https://api.github.com/repos/yusma1122/kajian-almuwattha/contents/database?ref=main';
 
-    const r = await fetch(DB_DIR, { cache: 'no-store' });
-    if (!r.ok) throw new Error('Folder "database" tidak dapat diakses (HTTP ' + r.status + ').');
-    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
-    const base = new URL(DB_DIR, location.href);
-    const urls = Array.from(doc.querySelectorAll('a[href]'))
-      .map((a) => a.getAttribute('href'))
-      .filter((h) => h && decodeURIComponent(h.split('?')[0]).toLowerCase().endsWith('.txt'))
-      .map((h) => new URL(h, base).href);
-    return Array.from(new Set(urls));
+    const response = await fetch(apiUrl, {
+      headers: {
+        Accept: 'application/vnd.github+json'
+      },
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        'Gagal mengambil daftar transkrip dari GitHub API (HTTP ' +
+        response.status +
+        ').'
+      );
+    }
+
+    const files = await response.json();
+
+    if (!Array.isArray(files)) {
+      throw new Error('Respons GitHub API tidak valid.');
+    }
+
+    return files
+      .filter(file =>
+        file.type === 'file' &&
+        /.txt$/i.test(file.name) &&
+        file.download_url
+      )
+      .map(file => file.download_url);
   }
 
   async function fetchText(url) {
@@ -574,10 +584,10 @@
 
     const thumb = v.videoId
       ? '<div class="relative shrink-0 w-full sm:w-48 aspect-video rounded-xl overflow-hidden bg-neutral-800">' +
-          '<img src="https://i.ytimg.com/vi/' + encodeURIComponent(v.videoId) + '/mqdefault.jpg" alt="" loading="lazy" ' +
-          'class="w-full h-full object-cover" onerror="this.style.display=\'none\'" />' +
-          '<span class="absolute bottom-1.5 right-1.5 text-[11px] font-medium bg-black/80 text-amber-300 rounded px-1.5 py-0.5">' +
-          escapeHtml(e.time) + '</span></div>'
+      '<img src="https://i.ytimg.com/vi/' + encodeURIComponent(v.videoId) + '/mqdefault.jpg" alt="" loading="lazy" ' +
+      'class="w-full h-full object-cover" onerror="this.style.display=\'none\'" />' +
+      '<span class="absolute bottom-1.5 right-1.5 text-[11px] font-medium bg-black/80 text-amber-300 rounded px-1.5 py-0.5">' +
+      escapeHtml(e.time) + '</span></div>'
       : '';
 
     const badges = h.labels
@@ -586,14 +596,14 @@
 
     const previewBtn = v.videoId
       ? '<button type="button" data-preview data-vid="' + escapeHtml(v.videoId) + '" data-t="' + e.seconds + '" ' +
-        'data-title="' + escapeHtml(title) + '" data-href="' + escapeHtml(href) + '" ' +
-        'class="text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 transition">Preview</button>'
+      'data-title="' + escapeHtml(title) + '" data-href="' + escapeHtml(href) + '" ' +
+      'class="text-xs rounded-lg bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-1.5 transition">Preview</button>'
       : '';
 
     const dateHtml = v.date
       ? '<span class="inline-flex items-center gap-1">' +
-          '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>' +
-          escapeHtml(v.date) + '</span>'
+      '<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5"/></svg>' +
+      escapeHtml(v.date) + '</span>'
       : '';
 
     const body =
@@ -604,27 +614,27 @@
 
     return (
       '<article class="card-in rounded-2xl border border-neutral-800 bg-neutral-900/70 hover:border-neutral-700 transition p-3 sm:p-4">' +
-        '<div class="flex flex-col sm:flex-row gap-4">' +
-          thumb +
-          '<div class="min-w-0 flex-1 flex flex-col">' +
-            '<div class="flex flex-wrap items-center gap-x-2 gap-y-1">' +
-              '<h3 class="text-sm font-medium text-amber-200">' + escapeHtml(title) + '</h3>' +
-              (v.videoId ? '' : '<span class="text-xs text-amber-300">' + escapeHtml(e.time) + '</span>') +
-            '</div>' +
-            '<p class="text-xs text-neutral-500 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5"><span>' + escapeHtml(v.ustadz || '-') + '</span>' + dateHtml + '</p>' +
-            (badges ? '<div class="flex flex-wrap gap-1.5 mt-2">' + badges + '</div>' : '') +
-            '<p class="text-[15px] text-neutral-100 mt-2.5 leading-relaxed flex-1">' + body + '</p>' +
-            '<div class="flex flex-wrap gap-2 mt-3">' +
-              '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer" ' +
-              'class="text-xs rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-900 font-semibold px-3 py-1.5 transition">Buka YouTube</a>' +
-              previewBtn +
-              '<button type="button" data-ctx="' + idx + '" class="text-xs rounded-lg border border-neutral-700 hover:border-neutral-500 text-neutral-300 px-3 py-1.5 transition">Lihat konteks</button>' +
-              '<button type="button" data-copy="' + idx + '" class="text-xs rounded-lg border border-neutral-700 hover:border-amber-400/60 text-neutral-300 px-3 py-1.5 transition">Salin</button>' +
-              '<button type="button" data-wa="' + idx + '" class="text-xs rounded-lg border border-emerald-700/60 hover:border-emerald-400 text-emerald-300 px-3 py-1.5 transition">WhatsApp</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div id="ctx-' + idx + '" class="hidden mt-3 pt-3 border-t border-neutral-800 space-y-1.5"></div>' +
+      '<div class="flex flex-col sm:flex-row gap-4">' +
+      thumb +
+      '<div class="min-w-0 flex-1 flex flex-col">' +
+      '<div class="flex flex-wrap items-center gap-x-2 gap-y-1">' +
+      '<h3 class="text-sm font-medium text-amber-200">' + escapeHtml(title) + '</h3>' +
+      (v.videoId ? '' : '<span class="text-xs text-amber-300">' + escapeHtml(e.time) + '</span>') +
+      '</div>' +
+      '<p class="text-xs text-neutral-500 mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5"><span>' + escapeHtml(v.ustadz || '-') + '</span>' + dateHtml + '</p>' +
+      (badges ? '<div class="flex flex-wrap gap-1.5 mt-2">' + badges + '</div>' : '') +
+      '<p class="text-[15px] text-neutral-100 mt-2.5 leading-relaxed flex-1">' + body + '</p>' +
+      '<div class="flex flex-wrap gap-2 mt-3">' +
+      '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener noreferrer" ' +
+      'class="text-xs rounded-lg bg-amber-400 hover:bg-amber-300 text-neutral-900 font-semibold px-3 py-1.5 transition">Buka YouTube</a>' +
+      previewBtn +
+      '<button type="button" data-ctx="' + idx + '" class="text-xs rounded-lg border border-neutral-700 hover:border-neutral-500 text-neutral-300 px-3 py-1.5 transition">Lihat konteks</button>' +
+      '<button type="button" data-copy="' + idx + '" class="text-xs rounded-lg border border-neutral-700 hover:border-amber-400/60 text-neutral-300 px-3 py-1.5 transition">Salin</button>' +
+      '<button type="button" data-wa="' + idx + '" class="text-xs rounded-lg border border-emerald-700/60 hover:border-emerald-400 text-emerald-300 px-3 py-1.5 transition">WhatsApp</button>' +
+      '</div>' +
+      '</div>' +
+      '</div>' +
+      '<div id="ctx-' + idx + '" class="hidden mt-3 pt-3 border-t border-neutral-800 space-y-1.5"></div>' +
       '</article>'
     );
   }
@@ -639,9 +649,9 @@
       const main = k === h.i || (h.needNext && k === h.i + 1);
       out +=
         '<div class="flex gap-3 items-baseline">' +
-          '<a href="' + escapeHtml(buildLink(v.link, en.seconds)) + '" target="_blank" rel="noopener noreferrer" ' +
-          'class="shrink-0 text-[11px] tabular-nums text-amber-400/80 hover:text-amber-300">' + escapeHtml(en.time) + '</a>' +
-          '<p class="text-sm leading-relaxed ' + (main ? 'text-neutral-100' : 'text-neutral-500') + '">' + highlight(en, currentTerms) + '</p>' +
+        '<a href="' + escapeHtml(buildLink(v.link, en.seconds)) + '" target="_blank" rel="noopener noreferrer" ' +
+        'class="shrink-0 text-[11px] tabular-nums text-amber-400/80 hover:text-amber-300">' + escapeHtml(en.time) + '</a>' +
+        '<p class="text-sm leading-relaxed ' + (main ? 'text-neutral-100' : 'text-neutral-500') + '">' + highlight(en, currentTerms) + '</p>' +
         '</div>';
     }
     return out;
