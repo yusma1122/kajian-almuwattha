@@ -320,37 +320,27 @@
   }
 
   async function listDatabaseFiles() {
-    const apiUrl =
-      'https://api.github.com/repos/yusma1122/kajian-almuwattha/contents/database?ref=main';
+    try {
+      const r = await fetch(DB_DIR + 'manifest.json', { cache: 'no-store' });
+      if (r.ok) {
+        const list = await r.json();
+        if (Array.isArray(list)) {
+          return list
+            .filter((n) => typeof n === 'string' && n.toLowerCase().endsWith('.txt'))
+            .map((n) => DB_DIR + encodeURI(n));
+        }
+      }
+    } catch (e) { /* lanjut ke directory listing */ }
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        Accept: 'application/vnd.github+json'
-      },
-      cache: 'no-store'
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        'Gagal mengambil daftar transkrip dari GitHub API (HTTP ' +
-        response.status +
-        ').'
-      );
-    }
-
-    const files = await response.json();
-
-    if (!Array.isArray(files)) {
-      throw new Error('Respons GitHub API tidak valid.');
-    }
-
-    return files
-      .filter(file =>
-        file.type === 'file' &&
-        /.txt$/i.test(file.name) &&
-        file.download_url
-      )
-      .map(file => file.download_url);
+    const r = await fetch(DB_DIR, { cache: 'no-store' });
+    if (!r.ok) throw new Error('Folder "database" tidak dapat diakses (HTTP ' + r.status + ').');
+    const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+    const base = new URL(DB_DIR, location.href);
+    const urls = Array.from(doc.querySelectorAll('a[href]'))
+      .map((a) => a.getAttribute('href'))
+      .filter((h) => h && decodeURIComponent(h.split('?')[0]).toLowerCase().endsWith('.txt'))
+      .map((h) => new URL(h, base).href);
+    return Array.from(new Set(urls));
   }
 
   async function fetchText(url) {
