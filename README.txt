@@ -156,6 +156,16 @@ Pengaturan hasil:
     mengandung kata hukum seperti wajib, haram, boleh, dan sebagainya.
 
 
+MODE TERANG / GELAP
+-------------------
+  - Tombol di pojok kanan atas ("Mode terang" / "Mode gelap") mengganti
+    tampilan sesuai kenyamanan mata Anda.
+  - Saat pertama dibuka, tema mengikuti pengaturan perangkat (HP/komputer).
+    Jika perangkat tidak punya preferensi, dipakai mode gelap.
+  - Setelah Anda menekan tombol itu, pilihan Anda diingat oleh browser
+    untuk kunjungan berikutnya.
+
+
 SALIN & BAGIKAN
 ---------------
   - Tombol "Salin" di tiap hasil menyalin kutipan seperti ini:
