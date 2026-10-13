@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transcript TXT Builder</title>
+<style>
+:root {
+  --bg:#f4f6fb; --card:#fff; --text:#172033; --muted:#69758a;
+  --primary:#3157d5; --primary-hover:#2444b5; --border:#dfe5ef;
+  --green:#168653; --green-hover:#11703f; --box-h:300px;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--text); font-family:Inter,"Segoe UI",Arial,sans-serif; line-height:1.5; }
+
+/* Bar atas: selalu terlihat, tombol unduh tidak perlu scroll */
+.topbar { position:sticky; top:0; z-index:10; background:rgba(244,246,251,.94); backdrop-filter:blur(6px); border-bottom:1px solid var(--border); }
+.topbar-inner { max-width:1050px; margin:0 auto; padding:10px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.brand h1 { margin:0; font-size:18px; line-height:1.2; }
+.brand .fname { margin:2px 0 0; font-size:12px; color:var(--muted); }
+.brand .fname code { color:var(--text); background:#e9edf6; padding:1px 6px; border-radius:5px; }
+
+.container { max-width:1050px; margin:0 auto; padding:16px 16px 28px; }
+.layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px; align-items:start; }
+.card { min-width:0; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; }
+.card-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:12px; min-height:34px; flex-wrap:wrap; }
+h2 { margin:0; font-size:16px; }
+.field { margin-bottom:12px; }
+label { display:block; font-size:13px; font-weight:700; margin-bottom:5px; }
+input, textarea {
+  width:100%; border:1px solid var(--border); border-radius:9px; padding:9px 11px;
+  font:14px/1.5 Inter,"Segoe UI",Arial,sans-serif; color:var(--text); background:#fbfcff; outline:none;
+}
+input:focus, textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(49,87,213,.10); }
+textarea { height:var(--box-h); resize:vertical; font:13px/1.65 Consolas,"Courier New",monospace; }
+.row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.hint { color:var(--muted); font-size:12px; margin:5px 0 0; }
+
+.btns { display:flex; gap:8px; flex-wrap:wrap; }
+button { border:0; border-radius:8px; padding:9px 14px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:background .15s, opacity .15s; }
+button:focus-visible { outline:3px solid rgba(49,87,213,.35); outline-offset:1px; }
+button:disabled { opacity:.45; cursor:not-allowed; }
+.primary { background:var(--primary); color:#fff; }
+.primary:hover:not(:disabled) { background:var(--primary-hover); }
+.success { background:var(--green); color:#fff; }
+.success:hover:not(:disabled) { background:var(--green-hover); }
+.secondary { background:#edf0f6; color:#27344b; }
+.secondary:hover:not(:disabled) { background:#e1e6f0; }
+
+/* Preview dengan "lihat selengkapnya" */
+.out-wrap { position:relative; }
+.preview { height:var(--box-h); overflow:auto; background:#fbfcff; border:1px solid var(--border); border-radius:10px; padding:12px; white-space:pre-wrap; overflow-wrap:anywhere; font:12px/1.7 Consolas,"Courier New",monospace; transition:height .2s ease; }
+.preview.expanded { height:min(75vh,720px); }
+.preview.empty { color:var(--muted); }
+.out-wrap::after { content:""; position:absolute; left:1px; right:15px; bottom:1px; height:36px; border-radius:0 0 9px 9px; pointer-events:none; background:linear-gradient(to bottom,rgba(251,252,255,0),#fbfcff); opacity:0; transition:opacity .2s; }
+.out-wrap.has-more:not(.open)::after { opacity:1; }
+#moreBtn { width:100%; margin-top:8px; display:none; }
+#moreBtn.show { display:block; }
+.status { min-height:18px; margin-top:8px; color:var(--green); font-size:12px; }
+footer { text-align:center; color:var(--muted); font-size:11px; margin-top:18px; }
+
+@media (max-width:760px) {
+  .layout { grid-template-columns:1fr; }
+  :root { --box-h:230px; }
+  .row { grid-template-columns:1fr; }
+}
+@media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <h1>Transcript TXT Builder</h1>
+      <p class="fname">Nama file: <code id="fnameShow">acak.txt</code></p>
+    </div>
+    <div class="btns">
+      <button class="success" type="button" id="downloadBtn">Unduh .txt</button>
+      <button class="secondary" type="button" id="copyBtn">Salin</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <main class="layout">
+    <section class="card">
+      <div class="card-head">
+        <h2>Data video</h2>
+        <div class="btns">
+          <button class="secondary" type="button" id="pasteLinkBtn" title="Tempel link dari clipboard">Tempel link</button>
+          <button class="secondary" type="button" id="sampleBtn">Contoh</button>
+          <button class="secondary" type="button" id="resetBtn">Kosongkan</button>
+        </div>
+      </div>
+      <form id="builderForm" onsubmit="return false">
+        <div class="field">
+          <label for="link">Link YouTube</label>
+          <input id="link" type="text" inputmode="url" autocomplete="off" placeholder="https://www.youtube.com/watch?v=...&index=9">
+          <p class="hint" id="indexHint">Angka setelah <code>index=</code> dipakai di nama file.</p>
+        </div>
+        <div class="field">
+          <label for="title">Judul</label>
+          <input id="title" type="text" autocomplete="off" placeholder="Judul video">
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="ustadz">Ustadz</label>
+            <input id="ustadz" type="text" autocomplete="off" placeholder="Nama ustadz">
+          </div>
+          <div class="field">
+            <label for="date">Tanggal</label>
+            <input id="date" type="text" autocomplete="off" placeholder="Feb 3, 2022">
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:0">
+          <label for="transcript">Transcript</label>
+          <textarea id="transcript" spellcheck="false" placeholder="00:00 Hai&#10;00:03 wanastaghfiruh Wa"></textarea>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Preview file</h2>
+        <span class="hint" id="countInfo" style="margin:0"></span>
+      </div>
+      <div class="out-wrap" id="outWrap">
+        <div id="preview" class="preview empty"></div>
+      </div>
+      <button class="secondary" id="moreBtn" type="button">Lihat selengkapnya ▾</button>
+      <div class="status" id="status" role="status"></div>
+    </section>
+  </main>
+  <footer>Semua proses di browser. Tidak ada data yang diunggah.</footer>
+</div>
+
+<script>
+(() => {
+  const ids = ['link', 'title', 'ustadz', 'date', 'transcript'];
+  const $ = id => document.getElementById(id);
+  const preview = $('preview'), outWrap = $('outWrap'), moreBtn = $('moreBtn'), status = $('status');
+  const EMPTY = 'Preview muncul di sini dan ikut berubah saat kamu mengetik.';
+  let currentText = '';
+
+  const val = id => $(id).value.trim();
+
+  // Ambil angka setelah "index=" dari link.
+  function getIndex() {
+    const link = val('link');
+    if (!link) return '';
+    try {
+      const v = new URL(link).searchParams.get('index');
+      if (v && /^\d+$/.test(v)) return v;
+    } catch (e) { /* link bukan URL utuh, coba regex */ }
+    const m = link.match(/[?&]index=(\d+)/i);
+    return m ? m[1] : '';
+  }
+
+  function getText() {
+    return [
+      '[VIDEO]',
+      `Link: ${val('link')}`,
+      `Judul: ${val('title')}`,
+      `Ustadz: ${val('ustadz')}`,
+      `Tanggal: ${val('date')}`,
+      'Transcript:',
+      val('transcript')
+    ].join('\n');
+  }
+
+  // Nama file: acak 6 karakter + "_" + index, contoh AsWdsE_9.txt
+  function randomName() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const bytes = new Uint8Array(6);
+    if (window.crypto && window.crypto.getRandomValues) window.crypto.getRandomValues(bytes);
+    else for (let i = 0; i < 6; i++) bytes[i] = Math.floor(Math.random() * 256);
+    let r = '';
+    for (const b of bytes) r += chars[b % chars.length];
+    const idx = getIndex();
+    return idx ? `${r}_${idx}.txt` : `${r}.txt`;
+  }
+
+  function updateMore() {
+    const prevT = preview.style.transition, prevH = preview.style.height;
+    preview.style.transition = 'none'; preview.style.height = '0px';
+    const contentH = preview.scrollHeight;
+    preview.style.height = prevH; preview.style.transition = prevT;
+    const overflow = contentH > 310;
+    outWrap.classList.toggle('has-more', overflow);
+    moreBtn.classList.toggle('show', overflow);
+    if (!overflow) { preview.classList.remove('expanded'); outWrap.classList.remove('open'); }
+    moreBtn.textContent = preview.classList.contains('expanded') ? 'Ringkas ▴' : 'Lihat selengkapnya ▾';
+  }
+
+  function refresh() {
+    const hasAny = ids.some(id => val(id));
+    currentText = hasAny ? getText() : '';
+    preview.textContent = hasAny ? currentText : EMPTY;
+    preview.classList.toggle('empty', !hasAny);
+    $('downloadBtn').disabled = $('copyBtn').disabled = !hasAny;
+
+    const idx = getIndex();
+    $('fnameShow').textContent = idx ? `(acak)_${idx}.txt` : '(acak).txt';
+    $('indexHint').textContent = val('link')
+      ? (idx ? `Index terdeteksi: ${idx}. Nama file akan berakhiran _${idx}.` : 'Index tidak ditemukan di link. Nama file hanya acak.')
+      : 'Angka setelah index= dipakai di nama file.';
+
+    const lines = val('transcript') ? val('transcript').split('\n').filter(l => l.trim()).length : 0;
+    $('countInfo').textContent = lines ? `${lines} baris transkrip` : '';
+    updateMore();
+  }
+
+  // Realtime: setiap field memicu preview.
+  ids.forEach(id => $(id).addEventListener('input', () => { status.textContent = ''; refresh(); }));
+
+  moreBtn.addEventListener('click', () => {
+    const open = preview.classList.toggle('expanded');
+    outWrap.classList.toggle('open', open);
+    moreBtn.textContent = open ? 'Ringkas ▴' : 'Lihat selengkapnya ▾';
+    if (!open) preview.scrollTop = 0;
+  });
+
+  $('pasteLinkBtn').addEventListener('click', async () => {
+    try {
+      $('link').value = (await navigator.clipboard.readText()).trim();
+      refresh();
+    } catch (e) {
+      $('link').focus();
+      status.textContent = 'Izin clipboard ditolak. Tempel manual dengan Ctrl+V.';
+    }
+  });
+
+  $('sampleBtn').addEventListener('click', () => {
+    $('link').value = 'https://www.youtube.com/watch?v=3StVJ5LZGng&list=PLeA28mmKIaD0w-KEDg7_vBAqGlqwUHUkL&index=9';
+    $('title').value = 'Kajian Kitab : Al Muwaththa Imam Malik';
+    $('ustadz').value = 'Dr. Muhammad Haikal Ali Basyarahil, M.A';
+    $('date').value = 'Feb 3, 2022';
+    $('transcript').value = [
+      '00:00 Hai',
+      "00:00 innalhamdalillah nahmaduhu wanasta'inuhu",
+      '00:03 wanastaghfiruh Wa',
+      "00:05 na'udzubillahi Min sururi anfusina Umi",
+      '00:08 saya Amalina Fauziah Dil Auf alamut',
+      '00:11 illallaah wa Ma yuk lele Falah hadiahlah'
+    ].join('\n');
+    refresh();
+  });
+
+  $('resetBtn').addEventListener('click', () => {
+    ids.forEach(id => $(id).value = '');
+    status.textContent = '';
+    refresh();
+    $('link').focus();
+  });
+
+  $('downloadBtn').addEventListener('click', () => {
+    const name = randomName();
+    const blob = new Blob(['\uFEFF', currentText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.textContent = `${name} diunduh.`;
+  });
+
+  $('copyBtn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(currentText);
+      status.textContent = 'Isi TXT disalin.';
+    } catch (e) {
+      const range = document.createRange(), sel = window.getSelection();
+      range.selectNodeContents(preview); sel.removeAllRanges(); sel.addRange(range);
+      status.textContent = 'Preview dipilih. Tekan Ctrl+C untuk menyalin.';
+    }
+  });
+
+  refresh();
+})();
+</script>
+</body>
+</html>

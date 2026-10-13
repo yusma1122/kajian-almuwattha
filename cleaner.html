@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Transcript Cleaner</title>
+<style>
+  :root {
+    --bg: #f4f6fb; --card: #ffffff; --text: #172033; --muted: #687386;
+    --primary: #3157d5; --primary-dark: #2444b5; --border: #dfe5ef;
+    --success: #168653; --warn: #a15c00; --warn-bg: #fff8e6;
+    --box-h: 280px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px 16px 28px; background: var(--bg); color: var(--text);
+    font-family: Inter, "Segoe UI", Arial, sans-serif; line-height: 1.5;
+  }
+  .container { max-width: 1080px; margin: 0 auto; }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  h1 { margin: 0; font-size: clamp(22px, 3.4vw, 28px); line-height: 1.2; }
+  .subtitle { color: var(--muted); margin: 0; font-size: 13px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; min-width: 0; }
+  .card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; min-height: 36px; flex-wrap: wrap; }
+  h2 { font-size: 16px; margin: 0; }
+  .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  button {
+    border: 0; border-radius: 8px; padding: 8px 13px; font-weight: 700;
+    font-size: 13px; font-family: inherit; cursor: pointer; transition: background .15s ease, opacity .15s ease;
+  }
+  button:focus-visible { outline: 3px solid rgba(49,87,213,.35); outline-offset: 1px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .primary { color: white; background: var(--primary); }
+  .primary:hover:not(:disabled) { background: var(--primary-dark); }
+  .secondary { color: #27344b; background: #edf0f6; }
+  .secondary:hover:not(:disabled) { background: #e1e6f0; }
+  .success { color: white; background: var(--success); }
+  .success:hover:not(:disabled) { background: #11703f; }
+
+  textarea {
+    display: block; width: 100%; height: var(--box-h); resize: none; padding: 12px;
+    border: 1px solid var(--border); border-radius: 10px; background: #fbfcff;
+    color: var(--text); font: 13px/1.65 Consolas, "Courier New", monospace; outline: none;
+    transition: height .2s ease;
+  }
+  textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(49,87,213,.10); }
+  #outputText.expanded { height: min(75vh, 720px); }
+
+  .out-wrap { position: relative; }
+  .out-wrap::after {
+    content: ""; position: absolute; left: 1px; right: 15px; bottom: 1px; height: 38px;
+    border-radius: 0 0 9px 9px; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(251,252,255,0), #fbfcff);
+    opacity: 0; transition: opacity .2s;
+  }
+  .out-wrap.has-more:not(.open)::after { opacity: 1; }
+  #moreBtn { width: 100%; margin-top: 8px; display: none; }
+  #moreBtn.show { display: block; }
+
+  .stats { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+  .stat { padding: 4px 8px; background: #f0f3f8; border-radius: 7px; font-size: 12px; color: #455168; }
+  .stat.warn { background: var(--warn-bg); color: var(--warn); }
+  .status { min-height: 18px; color: var(--success); font-size: 12px; margin-top: 8px; }
+  .hint { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
+
+  details { margin-top: 16px; }
+  details > summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+  details pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #f7f8fc; padding: 12px; border-radius: 9px; border: 1px solid var(--border); font: 12px/1.6 Consolas, monospace; margin: 10px 0 0; }
+  footer { text-align: center; color: var(--muted); font-size: 11px; margin-top: 20px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } :root { --box-h: 220px; } }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>YouTube Transcript Cleaner</h1>
+    <p class="subtitle">Tempel transkrip, hasil langsung muncul. Berjalan di browser, tanpa upload.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card-head">
+        <h2>Transkrip YouTube</h2>
+        <div class="btns">
+          <button class="secondary" id="pasteBtn" title="Tempel dari clipboard">Tempel</button>
+          <button class="secondary" id="sampleBtn">Contoh</button>
+          <button class="secondary" id="clearBtn">Hapus</button>
+        </div>
+      </div>
+      <textarea id="inputText" spellcheck="false" placeholder="Tempel transkrip YouTube di sini...&#10;&#10;Contoh:&#10;0:000 secondshai hai&#10;1:211 minute, 21 secondsassalamualaikum&#10;1:00:051 hour, 5 secondsAssalamualaikum Bu"></textarea>
+      <p class="hint">Mendukung format detik, menit, dan jam.</p>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Hasil bersih</h2>
+        <div class="btns">
+          <button class="success" id="copyBtn" disabled>Salin</button>
+          <button class="primary" id="downloadBtn" disabled>Unduh .txt</button>
+        </div>
+      </div>
+      <div class="stats">
+        <span class="stat">Berhasil: <strong id="lineCount">0</strong></span>
+        <span class="stat" id="skipStat">Dilewati: <strong id="skipCount">0</strong></span>
+      </div>
+      <div class="out-wrap" id="outWrap">
+        <textarea id="outputText" spellcheck="false" placeholder="Hasil bersih akan muncul di sini..." readonly></textarea>
+      </div>
+      <button class="secondary" id="moreBtn">Lihat selengkapnya ▾</button>
+      <div class="status" id="status" role="status"></div>
+    </section>
+  </div>
+
+  <details>
+    <summary>Contoh format</summary>
+    <pre>INPUT
+0:000 secondshai hai
+0:1616 secondshai hai nge-rap Man
+1:211 minute, 21 secondsassalamualaikum warahmatullahi wabarakatuh
+1:00:051 hour, 5 secondsAssalamualaikum Bu
+1:02:301 hour, 2 minutes, 30 secondsbismillah
+
+OUTPUT
+00:00 hai hai
+00:16 hai hai nge-rap Man
+01:21 assalamualaikum warahmatullahi wabarakatuh
+1:00:05 Assalamualaikum Bu
+1:02:30 bismillah</pre>
+    <p class="hint">Baris tanpa timestamp YouTube yang dikenali akan dilewati dan dihitung di "Dilewati".</p>
+  </details>
+  <footer>Teks tidak dikirim ke server mana pun.</footer>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const input = $('inputText'), output = $('outputText');
+  const lineCount = $('lineCount'), skipCount = $('skipCount'), skipStat = $('skipStat');
+  const status = $('status'), copyBtn = $('copyBtn'), downloadBtn = $('downloadBtn');
+  const moreBtn = $('moreBtn'), outWrap = $('outWrap');
+
+  const pad2 = n => String(n).padStart(2, '0');
+
+  // Label waktu YouTube: "16 seconds", "1 minute, 21 seconds", "1 hour, 5 seconds", dst.
+  const LABEL = /^(?:\d+\s*(?:hours?|minutes?|seconds?|jam|menit|detik)\s*,?\s*)+/i;
+
+  function parseLine(rawLine) {
+    const line = rawLine.trim();
+
+    // Format jam dulu (H:MM:SS), lalu menit (M:SS).
+    let h = 0, m, s, len;
+    let match = line.match(/^(\d{1,2}):(\d{2}):(\d{2})/);
+    if (match) {
+      h = Number(match[1]); m = Number(match[2]); s = Number(match[3]); len = match[0].length;
+      if (m > 59 || s > 59) return null;
+    } else {
+      match = line.match(/^(\d{1,3}):(\d{2})/);
+      if (!match) return null;
+      m = Number(match[1]); s = Number(match[2]); len = match[0].length;
+      if (s > 59) return null;
+    }
+
+    const rest = line.slice(len);
+    const label = rest.match(LABEL);
+    if (!label) return null;
+
+    let text = rest.slice(label[0].length).trim().replace(/^[-:–—]\s*/, '');
+    if (!text) return null;
+
+    const stamp = h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
+    return `${stamp} ${text}`;
+  }
+
+  function convert() {
+    const lines = input.value.replace(/\r\n?/g, '\n').split('\n');
+    const out = [];
+    let skipped = 0;
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const parsed = parseLine(line);
+      if (parsed) out.push(parsed); else skipped++;
+    }
+
+    output.value = out.join('\n');
+    lineCount.textContent = out.length;
+    skipCount.textContent = skipped;
+    skipStat.classList.toggle('warn', skipped > 0);
+    copyBtn.disabled = downloadBtn.disabled = out.length === 0;
+    status.textContent = '';
+    updateMore();
+  }
+
+  // "Lihat selengkapnya": tombol hanya muncul jika hasil lebih panjang dari kotak.
+  function updateMore() {
+    // Ukur tinggi isi sebenarnya (tanpa animasi), lalu bandingkan dengan tinggi kotak ringkas.
+    const prevT = output.style.transition, prevH = output.style.height;
+    output.style.transition = 'none'; output.style.height = '0px';
+    const contentH = output.scrollHeight;
+    output.style.height = prevH; output.style.transition = prevT;
+    const overflow = contentH > 285;
+    outWrap.classList.toggle('has-more', overflow);
+    moreBtn.classList.toggle('show', overflow);
+    if (!overflow) { output.classList.remove('expanded'); outWrap.classList.remove('open'); }
+    moreBtn.textContent = output.classList.contains('expanded') ? 'Ringkas ▴' : 'Lihat selengkapnya ▾';
+  }
+
+  moreBtn.addEventListener('click', () => {
+    const open = output.classList.toggle('expanded');
+    outWrap.classList.toggle('open', open);
+    moreBtn.textContent = open ? 'Ringkas ▴' : 'Lihat selengkapnya ▾';
+    if (!open) output.scrollTop = 0;
+  });
+
+  // Realtime: konversi setiap kali input berubah (tempel, ketik, hapus).
+  input.addEventListener('input', convert);
+
+  $('pasteBtn').addEventListener('click', async () => {
+    try {
+      input.value = await navigator.clipboard.readText();
+      convert();
+    } catch (e) {
+      input.focus();
+      status.textContent = 'Izin clipboard ditolak. Tempel manual dengan Ctrl+V.';
+    }
+  });
+
+  $('sampleBtn').addEventListener('click', () => {
+    input.value = [
+      '0:000 secondshai hai',
+      '0:1616 secondshai hai nge-rap Man',
+      '0:4545 secondshai hai Halo',
+      `1:211 minute, 21 secondsassalamualaikum warahmatullahi wabarakatuh ya Hai innalhamdalillah nahmaduhu wanasta'inuhu`,
+      `1:301 minute, 30 secondswanastaghfiruh Wa na'udzubillahi Min sururi anfusina`,
+      '1:00:051 hour, 5 secondsAssalamualaikum Bu',
+      '1:02:301 hour, 2 minutes, 30 secondsbismillah'
+    ].join('\n');
+    convert();
+  });
+
+  $('clearBtn').addEventListener('click', () => {
+    input.value = '';
+    convert();
+    input.focus();
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(output.value);
+      status.textContent = 'Hasil disalin.';
+    } catch (e) {
+      output.select();
+      const ok = document.execCommand('copy');
+      status.textContent = ok ? 'Hasil disalin.' : 'Gagal menyalin. Pilih teks hasil lalu salin manual.';
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const blob = new Blob([output.value], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'transkrip-bersih.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    status.textContent = 'transkrip-bersih.txt diunduh.';
+  });
+})();
+</script>
+</body>
+</html>

@@ -215,6 +215,12 @@ MASALAH UMUM
         Periksa koneksi internet dan kebenaran link YouTube di file.
 
 
+BUILDER
+-------
+Adapun alat atau tools untuk membuat aplikasi ini yaitu:
+Cleaner = ini untuk membersihkan transkrip youtube untuk ke format aplikasi
+builder-txt = ini membuat .txt dari transkrip cleaner
+
 CATATAN
 -------
 Transkrip dapat mengandung salah dengar atau salah tulis. Rujuklah
